@@ -1,9 +1,11 @@
 # Contributions to upstream projects
 
-Anything that belongs to a model's own code goes to its repository, where it stays maintained. These are drafts; nothing here has
-been posted yet.
+Anything that belongs to a model's own code goes to its repository, where it stays maintained. The first three were posted on 2026-09-29; the llama.cpp
+report is still a draft.
 
 ## piffie/laya-snapdragon: hardware report (X Elite, HTP v73)
+
+Posted: https://github.com/piffie/laya-snapdragon/issues/1
 
 **Title:** Works on Snapdragon X Elite X1E80100 (HTP v73), with latency and parity numbers
 
@@ -28,6 +30,8 @@ been posted yet.
 
 ## Mapika/decider: Windows ARM64 notes (issue plus docs PR)
 
+Posted: https://github.com/Mapika/decider/issues/18
+
 **Title:** Windows on ARM (Snapdragon X): numpy<2 pin blocks install; bfloat16 on CPU is 13× slower; llama.cpp needs clang
 
 1. **numpy pin.** `numpy<2`: numpy 1.26 has no win_arm64 cp312 wheel, so pip tries to build it from source. The only runtime numpy
@@ -44,6 +48,8 @@ been posted yet.
 5. **Server binding.** `scripts/serve.sh` binds `0.0.0.0` with no authentication. Consider `127.0.0.1` as the default.
 
 ## mohit67890/imajev: torchvision required for text-only use
+
+Posted: https://github.com/mohit67890/imajev/issues/1
 
 **Title:** Text-only CPU use still needs torchvision (Qwen3VLVideoProcessor); no Windows ARM64 wheel
 
