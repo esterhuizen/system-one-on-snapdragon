@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# bin/run_suite ITEMS_NAME RUN_NAME [targets...]
+#   Runs results/items/ITEMS_NAME.jsonl against each target, one local server at a time, into
+#   results/runs/RUN_NAME/<target>/.  Default targets: npu gpu ortcpu cpu jev
+set -euo pipefail
+PROJ=$(cd "$(dirname "$0")/.." && pwd); cd "$PROJ"
+items=${1:?items name}; run=${2:?run name}; shift 2
+targets=("$@"); [ ${#targets[@]} -gt 0 ] || targets=(npu gpu ortcpu cpu jev)
+declare -A REPEATS=( [npu]=3 [gpu]=3 [ortcpu]=1 [cpu]=1 [cputd]=1 [jev]=3 )
+declare -A HNAME=( [npu]=laya-npu [gpu]=laya-gpu [ortcpu]=laya-ortcpu [cpu]=laya-cpu [cputd]=laya-cpu-td [jev]=jev )
+declare -A SERVER=( [npu]=npu [gpu]=gpu [ortcpu]=ortcpu [cpu]=cpu [cputd]=cpu )
+declare -A SARGS=( [cputd]="--preload typed-decisions" )   # typed-decisions checkpoint (max_len 1024) on the torch-CPU server
+for s in cpu gpu npu ortcpu; do bin/serve stop "$s" >/dev/null 2>&1 || true; done
+for t in "${targets[@]}"; do
+  echo "=== $t ($(date +%H:%M:%S))"
+  [ "$t" != jev ] && bin/serve start "${SERVER[$t]}" ${SARGS[$t]:-}
+  bin/winrun harness jevcmp.py --items "results/items/$items.jsonl" --targets "${HNAME[$t]}" \
+      --repeats "${REPEATS[$t]}" --out "results/runs/$run/${HNAME[$t]}" --jev-token-budget 2000000 2>&1 | tr -d '\r' | tail -2
+  [ "$t" != jev ] && bin/serve stop "${SERVER[$t]}" | tail -1
+done
+echo "=== done $(date +%H:%M:%S)"

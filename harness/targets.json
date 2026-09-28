@@ -1,0 +1,11 @@
+{
+ "jev":          {"base": "https://api.typesafe.ai", "key_env": "TYPESAFE_API_KEY", "model": "jev-1.13.0", "ping": "/v1/models", "timeout": 30},
+ "jev-vercel":   {"base": "https://ai-gateway.vercel.sh/typesafe", "key_env": "AI_GATEWAY_API_KEY", "model": "typesafe-ai/jev", "ping": "/v1/models", "timeout": 30},
+ "laya-cpu":     {"base": "http://127.0.0.1:8000", "key": "local", "model": "english", "ping": "/health", "timeout": 600},
+ "laya-cpu-td":  {"base": "http://127.0.0.1:8000", "key": "local", "model": "typed-decisions", "ping": "/health", "timeout": 600},
+ "laya-gpu":     {"base": "http://127.0.0.1:8001", "key": "local", "model": "english", "ping": "/health", "timeout": 120},
+ "laya-npu":     {"base": "http://127.0.0.1:8002", "key": "local", "model": "english", "ping": "/health", "timeout": 120},
+ "laya-dml":     {"base": "http://127.0.0.1:8003", "key": "local", "model": "english", "ping": "/health", "timeout": 120},
+ "laya-ortcpu":  {"base": "http://127.0.0.1:8004", "key": "local", "model": "english", "ping": "/health", "timeout": 300},
+ "laya-cpu-wsl": {"base": "http://127.0.0.1:8010", "key": "local", "model": "english", "ping": "/health", "timeout": 600}
+}

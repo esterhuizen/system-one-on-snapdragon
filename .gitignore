@@ -1,0 +1,15 @@
+# never commit keys, data, models or environments
+.env
+*.env
+envs/
+models/
+results/
+logs/
+*.gguf
+*.onnx
+*.onnx.data
+*.safetensors
+*.bin
+*.xlsx
+__pycache__/
+*.pyc

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Run Windows-native ARM64 python from one of %USERPROFILE%\local-laya\envs\<env>.
+#   bin/winrun <env> <script.py | C:\abs\path.py> [args]   |   bin/winrun <env> -m mod ...   |   bin/winrun <env> -c "code"
+set -euo pipefail
+PROJ=$(cd "$(dirname "$0")/.." && pwd); WIN=${WIN_HOME:?set WIN_HOME=/mnt/c/Users/<you>}/local-laya; WINW="C:\\Users\\${WINUSER:?set WINUSER=<your Windows user name>}\\local-laya"
+[ $# -ge 2 ] || { sed -n 2,4p "$0"; exit 2; }
+env=$1; shift; PYW="$WIN/envs/$env/Scripts/python.exe"
+[ -f "$PYW" ] || { echo "no such env: $PYW" >&2; exit 2; }
+mkdir -p "$WIN/scripts" "$WIN/logs"; cp -r "$PROJ/win/." "$PROJ/../harness/." "$WIN/scripts/"
+# Jev key: take ONLY TYPESAFE_API_KEY from .env (never the other keys in it); forwarded to Windows via WSLENV, never printed
+if [ -z "${TYPESAFE_API_KEY:-}" ] && [ -f "$PROJ/.env" ]; then
+  TYPESAFE_API_KEY=$(sed -n 's/^[[:space:]]*\(export[[:space:]]\+\)\?TYPESAFE_API_KEY=//p' "$PROJ/.env" | tail -n1 | sed -e 's/^["\x27]//' -e 's/["\x27]$//')
+  [ -n "$TYPESAFE_API_KEY" ] && export TYPESAFE_API_KEY
+fi
+export WSLENV="${WSLENV:+$WSLENV:}TYPESAFE_API_KEY:HF_TOKEN"   # pass secrets only if set
+cd "$WIN"                                         # Windows cwd = %USERPROFILE%\local-laya (never a UNC path)
+case "$1" in
+  -*|*:*) exec "$PYW" -X utf8 "$@" ;;            # -m/-c or an absolute Windows path
+  *) s=$1; shift; exec "$PYW" -X utf8 "$WINW\\scripts\\$s" "$@" ;;
+esac

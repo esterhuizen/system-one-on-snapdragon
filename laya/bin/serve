@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# bin/serve start|stop|status|logs <cpu|gpu|npu|dml|ortcpu> [extra args appended to the server command]
+# Servers are launched through WMI (Win32_Process.Create) so no handle ties them to WSL interop:
+# Start-Process from WSL hangs because the QNN driver keeps the interop console relay open.
+set -euo pipefail
+PROJ=$(cd "$(dirname "$0")/.." && pwd); WIN=${WIN_HOME:?set WIN_HOME=/mnt/c/Users/<you>}/local-laya; WINW="C:\\Users\\${WINUSER:?set WINUSER=<your Windows user name>}\\local-laya"
+declare -A ENVN=( [cpu]=cpu [gpu]=gpu-qnn [npu]=npu [dml]=gpu-dml [ortcpu]=npu )
+declare -A PORT=( [cpu]=8000 [gpu]=8001 [npu]=8002 [dml]=8003 [ortcpu]=8004 )
+declare -A ARGV=( [cpu]="cpu_serve.py --threads 12" [gpu]="accel_serve.py --backend qnngpu" [npu]="accel_serve.py --backend npu"
+                  [dml]="accel_serve.py --backend dml" [ortcpu]="accel_serve.py --backend ortcpu" )
+cmd=${1:?start|stop|status|logs}; name=${2:?server name}; shift 2
+[ -n "${PORT[$name]:-}" ] || { echo "unknown server '$name' (cpu|gpu|npu|dml|ortcpu)" >&2; exit 2; }
+port=${PORT[$name]}
+ps() { (cd "$WIN" && powershell.exe -NoProfile -Command "$1" </dev/null 2>&1 | tr -d '\r'); }
+healthy() { (cd "$WIN" && curl.exe -sf -m 3 "http://127.0.0.1:$port/health" >/dev/null 2>&1); }
+alive() { [ "$(ps "if (Get-Process -Id $1 -ErrorAction SilentlyContinue) { 'y' }")" = y ]; }
+case $cmd in
+start)
+  healthy && { echo "port $port already serves something; run: bin/serve stop $name" >&2; exit 1; }
+  mkdir -p "$WIN/scripts" "$WIN/logs"; cp -r "$PROJ/win/." "$PROJ/../harness/." "$WIN/scripts/"
+  read -r -a parts <<<"${ARGV[$name]} --port $port $*"
+  args="\"$WINW\\scripts\\${parts[0]}\""; for x in "${parts[@]:1}"; do args+=" $x"; done
+  py="$WINW\\envs\\${ENVN[$name]}\\Scripts\\python.exe"; log="$WINW\\logs\\$name"
+  pid=$(ps "\$si = New-CimInstance -ClassName Win32_ProcessStartup -ClientOnly -Property @{ShowWindow=[uint16]0}
+    \$cl = 'cmd.exe /d /c \"\"$py\" -X utf8 $args > \"$log.out.log\" 2> \"$log.err.log\"\"'
+    \$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine=\$cl; CurrentDirectory='$WINW'; ProcessStartupInformation=\$si}
+    if (\$r.ReturnValue -ne 0) { throw \"Win32_Process.Create failed: \$(\$r.ReturnValue)\" }
+    \$r.ProcessId | Set-Content -Encoding ascii '$log.pid'; \$r.ProcessId")
+  [[ $pid =~ ^[0-9]+$ ]] || { echo "launch failed: $pid" >&2; exit 1; }
+  t0=$(date +%s)
+  until healthy; do
+    alive "$pid" || { echo "$name (pid $pid) exited during startup; last log lines:" >&2; tail -n 20 "$WIN/logs/$name.err.log" >&2; exit 1; }
+    (( $(date +%s) - t0 > 600 )) && { echo "$name not up after 600 s; see $WIN/logs/$name.err.log" >&2; exit 1; }
+    sleep 2
+  done
+  echo "$name up on :$port (pid $pid) after $(( $(date +%s) - t0 )) s"; (cd "$WIN" && curl.exe -s "http://127.0.0.1:$port/health"); echo ;;
+stop)
+  pid=$(tr -dc 0-9 < "$WIN/logs/$name.pid" 2>/dev/null || true)
+  [ -n "$pid" ] && (cd "$WIN" && taskkill.exe /PID "$pid" /T /F 2>&1 | tr -d '\r') || true
+  # sweep orphans whose tree root is already gone (matched by script + port on the command line)
+  ps "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | ? { \$_.CommandLine -match '(accel|cpu)_serve\\.py' -and \$_.CommandLine -match '--port $port(\\s|\$)' } | % { Stop-Process -Id \$_.ProcessId -Force; 'killed orphan ' + \$_.ProcessId }"
+  healthy && { echo "WARNING: port $port still answering" >&2; exit 1; } || echo "$name stopped" ;;
+status) healthy && (cd "$WIN" && curl.exe -s "http://127.0.0.1:$port/health") || echo "$name down"; echo ;;
+logs)   tail -n 60 "$WIN/logs/$name.err.log" ;;
+*) echo "usage: bin/serve start|stop|status|logs <name>" >&2; exit 2 ;;
+esac
