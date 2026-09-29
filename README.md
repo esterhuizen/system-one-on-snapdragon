@@ -9,6 +9,9 @@ or yes/no. The ones covered here are:
 - **[Laya](https://huggingface.co/convaiinnovations/laya)**: runs on the **NPU** and the **Adreno GPU**.
 - **[Decider](https://github.com/Mapika/decider)**: runs fast on the **CPU** through llama.cpp.
 - **[imajev](https://github.com/mohit67890/imajev)**: runs on the **CPU** through PyTorch.
+- **[Winnow-12B](https://huggingface.co/EldanRing/Winnow-12B)** (Gemma 4 12B): runs **entirely on the Hexagon NPU** at 4-bit, about
+  2 s per request, through ONNX Runtime's QNN provider with no test-signing. It also runs on the CPU through its llama.cpp server.
+  The build, the traps and the numbers are in **[docs/WINNOW-NPU.md](docs/WINNOW-NPU.md)**.
 
 **This repository is a dated snapshot, not a maintained fork.** Each model lives in its upstream repository, and the fixes that
 belong there are proposed there ([docs/UPSTREAM.md](docs/UPSTREAM.md)). What this repo keeps is the glue: setup scripts,
@@ -25,6 +28,8 @@ stay reproducible even as upstream moves on.
 | Laya | laya 0.3.20; piffie/laya-snapdragon v0.2.0; onnxruntime-qnn 1.24.4 (NPU) and 2.6.0 with onnxruntime 1.30.0 (GPU) |
 | Decider | decider-ai 1.5.0; decider-2b v11 (HF `533964da…`, GGUF `ffa92e6d…`); llama-cpp-python 0.3.35 built CPU-only with clang |
 | imajev | imajev 1.0.0; adapter `531ea011…`; Qwen3.5-2B `15852e8c…`; torchvision 0.29.0 built from source |
+| Winnow | Winnow-12B GGUF `b6ac22b0` (Q8_0); winnow-inference `6c2b3c0` (llama.cpp `911f6cdc`) built CPU-only with clang |
+| Winnow on the NPU | build/quantize: onnxruntime-qnn 1.24.4; compile/run: onnxruntime 1.30.0 + onnxruntime-qnn 2.6.0 (QNN 2.39, HTP 2.50) |
 | PyTorch | 2.14.0+cpu, from download.pytorch.org (PyPI has no Windows ARM64 torch) |
 
 ## Results in one table
@@ -40,6 +45,18 @@ Median time for one request with 3–4 short questions (about 100–130 tokens):
 | imajev-2b, PyTorch CPU, float32 | ~14.5 s | Needs ≥10.5 GB free RAM |
 | Jev API (reference) | ~220 ms | Includes ~160 ms network round trip |
 
+**Winnow-12B** (requests of about 200–550 tokens, one or two questions):
+
+| Path | Per request | Notes |
+|---|---|---|
+| **Hexagon NPU, LPBQ int4, questions packed into one pass** | **~2.2 s** | ~6 GB of NPU-mapped weights; up to 576 tokens per pass |
+| Hexagon NPU, w8a16 | ~8 s | 11 GB of weights exceeds the NPU's ~9–10 GB mapping limit, which forces re-mapping |
+| CPU, llama.cpp Q8_0 | ~6–8 s per short JevBench item | Needs about 14 GB free RAM; long option lists take several times longer |
+
+**JevBench public items** (231; accuracy easy / standard / hard): Jev 1.000 / 0.986 / 0.712 · decider-2b 1.000 / 0.889 / 0.568 ·
+imajev-2b 1.000 / 0.917 / 0.568 · Laya 0.958 / 0.694 / 0.351 · Winnow-12B on the NPU 1.000 / 0.875 / 0.400 on the 50 hard items
+that fit in 576 tokens (Jev 0.760 on the same 50). Details and caveats are in FINDINGS.
+
 Accuracy, the benchmark method, and every Windows ARM64 problem we hit are in **[docs/FINDINGS.md](docs/FINDINGS.md)**.
 
 ## Layout
@@ -49,8 +66,10 @@ laya/bin/      WSL launchers: winrun (run a Windows venv script), serve (start/s
 laya/win/      Windows-side Python: NPU/GPU servers, proofs, encoder export and QNN graph fixes, throttling opt-out
 decider/       Windows ARM64 setup, CPU-only llama.cpp build, smoke tests, ONNX export + QNN diagnosis (bisect, chain)
 imajev/        Windows ARM64 setup, torchvision-from-source build, smoke test
+winnow-npu/    Winnow-12B on the Hexagon NPU: GGUF -> ONNX chunks, calibration, LPBQ int4, packing, QNN compile, Jev-compatible
+               server; tools/ (checks and probes); cpu/ (Winnow's llama.cpp server on the CPU: build, patch, launcher)
 harness/       jevcmp.py (runner for any /v1/systemone endpoint), metrics and reports, benchmark item builders
-docs/          FINDINGS.md, UPSTREAM.md, fair-benchmark plan
+docs/          FINDINGS.md, UPSTREAM.md, WINNOW-NPU.md (guide), fair-benchmark plan
 ```
 
 ## Configuration

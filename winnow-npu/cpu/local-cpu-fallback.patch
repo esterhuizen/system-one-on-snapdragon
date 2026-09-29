@@ -1,0 +1,16 @@
+diff --git a/native/engine.h b/native/engine.h
+index 6971b36..1296ce8 100644
+--- a/native/engine.h
++++ b/native/engine.h
+@@ -269,6 +269,11 @@ class Engine {
+                 break;
+             }
+         }
++        // local patch (Windows ARM64 CPU-only build): no GPU is compiled in, so fall back to the CPU device. `device` is
++        // only used for its description and memory figures in responses; all compute goes through llama.cpp's backends.
++        for (size_t i = 0; !device && i < ggml_backend_dev_count(); ++i)
++            if (ggml_backend_dev_type(ggml_backend_dev_get(i)) == GGML_BACKEND_DEVICE_TYPE_CPU)
++                device = ggml_backend_dev_get(i);
+         if (!device)
+             throw std::runtime_error("Winnow requires a GPU backend");
+         device_name = ggml_backend_dev_description(device);

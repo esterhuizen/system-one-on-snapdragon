@@ -1,7 +1,7 @@
 # Contributions to upstream projects
 
-Anything that belongs to a model's own code goes to its repository, where it stays maintained. The first three were posted on 2026-09-29; the llama.cpp
-report is still a draft.
+Anything that belongs to a model's own code goes to its repository, where it stays maintained. The first three were posted on 2026-09-29. The llama.cpp blue-screen report and
+the three drafts at the end (from the Winnow work) are not posted yet.
 
 ## piffie/laya-snapdragon: hardware report (X Elite, HTP v73)
 
@@ -68,3 +68,39 @@ Posted: https://github.com/mohit67890/imajev/issues/1
   - Two 0xD1 bugchecks while running the b10453 Windows ARM64 Adreno build, and a build that loaded every backend, with a Qwen3.5
     GGUF (decider-2b / 4b).
   - CPU-only builds are stable.
+
+## microsoft/onnxruntime (QNN EP): LPBQ requirements are undocumented; SimplifiedLayerNormalization is not placed on HTP
+
+*Draft, not posted.*
+
+1. **LPBQ int4 block scales are read as 4-bit.** `qnn_quant_params_wrapper.cc` sets `blockScaleBitwidth = is_int4 ? 4 : 0`.
+   - The `lpbqmatmul_fusion` pattern takes per-block scales as a uint8 initializer dequantized per channel, so 8-bit values
+     look valid. Values above 15 are silently misread and the MatMul produces garbage: 124% relative error on a Gemma 4
+     layer, against 13.7% once the scales were kept to 1..15.
+   - Suggest documenting the range, or rejecting out-of-range scales at fusion time.
+2. **onnxruntime-qnn 1.24.4 rejects LPBQ weights.** Every fused weight fails with `Failed to create tensor … error code: 1000`
+   on an X Elite (HTP v73). The same model compiles and runs correctly with onnxruntime 1.30 + onnxruntime-qnn 2.6.0.
+3. **`SimplifiedLayerNormalization` is not placed on the HTP by 1.24.4, while opset 23 `RMSNormalization` is.** With the
+   former, every RMSNorm fell back to the CPU and split a decoder layer into 5 NPU partitions.
+4. **Plain block-wise int4 `DequantizeLinear(block_size=…)` → MatMul compiles but is wrong on the HTP.** It gives 72%
+   relative error on the NPU against 14.6% on the ORT CPU for the same model. It should either be rejected or emulated.
+
+Reproduction scripts: `winnow-npu/tools/lpbq_layer_test.py`, `lpbq_plugin_test.py`, `rmsnorm_probe.py`.
+
+## EldanRing/winnow-inference: CPU-only use
+
+*Draft, not posted.*
+
+- `native/engine.h` throws "Winnow requires a GPU backend" when no GPU or iGPU device exists. The device is only used for its
+  description and memory figures, so falling back to the CPU device works (`winnow-npu/cpu/local-cpu-fallback.patch`).
+- On the CPU, the selected answer head's `ggml_backend_tensor_get` on the tied embedding hits llama.cpp's repack buffer, which
+  has no `get_tensor` (null call, access violation). `--no-repack` fixes it; the launcher could set it on CPU.
+- The Q8_0 model ran correctly on Windows ARM64 (clang, CPU only).
+
+## ggml-org/llama.cpp: reading back a tensor from the CPU repack buffer crashes
+
+*Draft, not posted.*
+
+`ggml_backend_tensor_get` on a tensor that lives in the CPU "repack" extra buffer calls a null `get_tensor`, which is an access
+violation. It was hit through winnow-inference's classifier-head patch reading the tied `token_embd` rows (Gemma 4 12B Q8_0,
+Windows ARM64, build 11036). It could return an error or de-repack instead.

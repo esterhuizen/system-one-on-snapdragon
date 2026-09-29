@@ -103,7 +103,79 @@ Measured on one Snapdragon X Elite laptop in September 2026 (versions in the REA
 - **Why we stopped:** splitting across 7+ processes might work, but the hand-offs and CPU fallback make it unlikely to beat the
   CPU-only llama.cpp path (~220 ms). That remains the recommended way to run Decider on this laptop.
 
-## 5. Windows ARM64 operational problems
+## 5. JevBench public items: every model on this laptop
+
+The unmodified [JevBench](https://github.com/fstandhartinger/jevbench) harness (`9ec6f15`) ran on Windows ARM64. It needed a
+no-op `fcntl` shim: its budget ledger imports the Unix-only module, and a single-process run needs no locking. Each local
+system was served as a Jev-compatible `/v1/systemone` endpoint and driven through the harness's own `typesafe` adapter, one
+system at a time. Laya also ran through the harness's in-process `laya_local` adapter.
+
+| System (231 public items) | Runs on | Easy (48) | Standard (72) | Hard (111) | Hard ECE | Median, short / hard |
+|---|---|---|---|---|---|---|
+| Jev 1.13.0 | cloud API | 1.000 | 0.986 | 0.712 | 0.083 | 256 / 258 ms |
+| decider-2b v11, GGUF Q8_0 | CPU, llama.cpp | 1.000 | 0.889 | 0.568 | 0.184 | 196 ms / 1.8 s |
+| imajev-2b (1 rotation + calibration) | CPU, PyTorch fp32 | 1.000 | 0.917 | 0.568 | 0.096 | 6.4 / 22 s |
+| Laya (ModernBERT-large) | NPU fp16 | 0.958 | 0.694 | 0.351 | 0.198 | 40 / 412 ms |
+| Laya | Adreno GPU / CPU | 0.958 | 0.694 | 0.351 | 0.19 | 130 ms / 736 ms (short) |
+| Winnow-12B, LPBQ int4 (section 7) | NPU | 1.000 | 0.875 | see below | | 2.2 s |
+
+- **The harness reproduces published results:**
+  - Laya matches JevBench's published per-item outcomes on **231/231** items, on all three routes.
+  - Jev matches on 229/231.
+  - decider-2b GGUF is within one hard item of Mapika's own v11 figure (0.568 vs 0.577).
+- **imajev:** one very long hard item exceeded the harness's 120 s timeout on the CPU and counts as wrong. The author's 0.604 on
+  hard used 4 rotations.
+- **Winnow on the NPU, hard tier:** 61 of the 111 hard items are longer than one 576-token pass and are refused. On the 50 that
+  fit, the scores are Winnow NPU **0.400**, Jev 0.760, decider-2b 0.680, imajev-2b 0.660 and Laya 0.300. On easy and standard
+  items the NPU build matches CPU Winnow (64/67). A CPU (Q8) Winnow run on the same 50 hard items, to separate the 4-bit loss
+  from the model itself, is pending.
+- **What the hard tier separates:** long policy texts, multi-hop and temporal-numeric questions. Easy items are nearly solved
+  by every model.
+
+## 6. Winnow-12B on the CPU
+
+- **Build:** Winnow's server (winnow-inference `6c2b3c0`, a patched llama.cpp `911f6cdc`) builds for Windows ARM64 with the
+  Visual Studio clang, CPU only, with every GPU backend off. Its own unit tests pass.
+- **Two fixes** to run it without a GPU:
+  - The decision engine refused to start ("requires a GPU backend"). Its device handle is only used for memory figures, so a
+    two-line fallback to the CPU device (`winnow-npu/cpu/local-cpu-fallback.patch`) is enough.
+  - The first request crashed (access violation 0xc0000005). The answer head reads the tied embedding rows back with
+    `ggml_backend_tensor_get`, which llama.cpp's CPU repack buffer does not implement. Start with **`--no-repack`**; pinning the
+    embedding to a plain CPU buffer did not help.
+- **Memory:** `--load-mode none` (this llama.cpp has no `--no-mmap`) avoids holding the weights twice. Q8_0 then needs about
+  13.6 GB resident, against 19 GB with mmap plus repack.
+- **Speed:** about 2 s for a short 2-question request and 6–8 s per JevBench easy item. Requests with long option lists take
+  several times longer. It is usable for checking, not for volume.
+
+## 7. Winnow-12B on the Hexagon NPU
+
+The full guide is in **[WINNOW-NPU.md](WINNOW-NPU.md)**. In short:
+
+- **Route:** ONNX Runtime's QNN execution provider. That means no llama.cpp Hexagon backend, which on Windows would need
+  test-signing and therefore Secure Boot off.
+- **Graphs:** the GGUF weights become 12 static ONNX graphs of 4 decoder layers. Each is calibrated (uint16 activations),
+  converted to **LPBQ int4** weights (block 32) and compiled to a QNN context.
+- **Head:** the embeddings and the answer head run on the CPU.
+- **Checks:**
+  - a PyTorch rebuild from the GGUF matches the CPU server;
+  - the Python port of the prompt and tokenizer matches the server's token ids on 229/229 requests;
+  - a single layer in fp16 on the NPU matches PyTorch to 8e-4.
+- **Speed path:**
+  - CPU Q8_0: 6–8 s per JevBench easy item;
+  - NPU w8a16: 4.2 s per 512-token pass;
+  - NPU LPBQ int4: 1.6 s per 512-token pass;
+  - all of a request's questions packed into one 576-token pass: **2.2 s per JevBench item**.
+- **The limits we found:**
+  - the NPU keeps only about **9–10 GB** of weights mapped, system-wide, so the 11 GB w8a16 chain re-maps on every pass;
+  - LPBQ block scales must be **4-bit integers (1..15)**;
+  - onnxruntime-qnn **1.24.4 rejects LPBQ**, while the 2.6.0 plugin runs it;
+  - `SimplifiedLayerNormalization` falls back to the CPU, but opset 23 `RMSNormalization` does not.
+- **Accuracy cost:**
+  - one layer at LPBQ int4 has about 12% relative output error (w8a16: about 2%);
+  - end to end, the NPU answer matched CPU Winnow on 64/67 JevBench easy and standard items;
+  - the loss shows on close calls; the weak hard-tier score (section 5) is still being separated from Winnow's own accuracy.
+
+## 8. Windows ARM64 operational problems
 
 - **Launching Windows servers from WSL hangs WSL** when you use PowerShell `Start-Process`, because the QNN driver keeps WSL's
   interop console relay open. Launch through WMI `Win32_Process.Create` instead (`laya/bin/serve`).
@@ -112,7 +184,7 @@ Measured on one Snapdragon X Elite laptop in September 2026 (versions in the REA
 - **WSL can't reach Windows `127.0.0.1`** in NAT networking mode, so run HTTP clients on the Windows side.
 - **openpyxl 3.1.2 files fail a plain open in Excel** (COM "Unable to get the Open property"). openpyxl 3.1.5 on Windows works.
 
-## 6. Blue screens during llama.cpp GPU experiments
+## 9. Blue screens during llama.cpp GPU experiments
 
 Two **0xD1 DRIVER_IRQL_NOT_LESS_OR_EQUAL** bugchecks occurred while prebuilt llama.cpp Windows ARM64 binaries were being tried
 with the **Adreno OpenCL** backend (build b10453) and with every backend loaded.
