@@ -11,7 +11,10 @@ or yes/no. The ones covered here are:
 - **[imajev](https://github.com/mohit67890/imajev)**: runs on the **CPU** through PyTorch.
 - **[Winnow-12B](https://huggingface.co/EldanRing/Winnow-12B)** (Gemma 4 12B): runs **entirely on the Hexagon NPU** at 4-bit, about
   2 s per request, through ONNX Runtime's QNN provider with no test-signing. It also runs on the CPU through its llama.cpp server.
-  The build, the traps and the numbers are in **[docs/WINNOW-NPU.md](docs/WINNOW-NPU.md)**.
+  The build, the traps and the numbers are in **[docs/WINNOW-NPU.md](docs/WINNOW-NPU.md)**; the NPU-ready model files are on
+  Hugging Face: [tielmane/Winnow-12B-NPU-LPBQ-X-Elite](https://huggingface.co/tielmane/Winnow-12B-NPU-LPBQ-X-Elite).
+- **Laya, fine-tuned into a dedicated classifier** with Claude Opus labels: on a real helpdesk-ticket job it went from 63.5% to
+  **88.5%** (Jev 83.5%) and runs on the NPU at ~17 ms per ticket. Recipe and code: **[docs/LAYA-FINETUNE.md](docs/LAYA-FINETUNE.md)**.
 
 **This repository is a dated snapshot, not a maintained fork.** Each model lives in its upstream repository, and the fixes that
 belong there are proposed there ([docs/UPSTREAM.md](docs/UPSTREAM.md)). What this repo keeps is the glue: setup scripts,
@@ -70,10 +73,11 @@ laya/bin/      WSL launchers: winrun (run a Windows venv script), serve (start/s
 laya/win/      Windows-side Python: NPU/GPU servers, proofs, encoder export and QNN graph fixes, throttling opt-out
 decider/       Windows ARM64 setup, CPU-only llama.cpp build, smoke tests, ONNX export + QNN diagnosis (bisect, chain)
 imajev/        Windows ARM64 setup, torchvision-from-source build, smoke test
+laya-finetune/ Laya -> dedicated classifier: Opus labelling workflow, fine-tuning, NPU export and runner
 winnow-npu/    Winnow-12B on the Hexagon NPU: GGUF -> ONNX chunks, calibration, LPBQ int4, packing, QNN compile, Jev-compatible
                server; tools/ (checks and probes); cpu/ (Winnow's llama.cpp server on the CPU: build, patch, launcher)
 harness/       jevcmp.py (runner for any /v1/systemone endpoint), metrics and reports, benchmark item builders
-docs/          FINDINGS.md, UPSTREAM.md, WINNOW-NPU.md (guide), fair-benchmark plan
+docs/          FINDINGS.md, UPSTREAM.md, WINNOW-NPU.md and LAYA-FINETUNE.md (guides), fair-benchmark plan
 ```
 
 ## Configuration

@@ -11,6 +11,10 @@ weights.
 Everything here was measured on **one** laptop (Snapdragon X Elite X1E80100, Hexagon HTP v73, 32 GB RAM, Windows 11 26200) in
 late September 2026. Treat the numbers as a dated snapshot, not a promise.
 
+**Ready-made model files** (the 12 publicly calibrated 4-bit chunks, plus compiled X Elite contexts):
+[tielmane/Winnow-12B-NPU-LPBQ-X-Elite](https://huggingface.co/tielmane/Winnow-12B-NPU-LPBQ-X-Elite) on Hugging Face. With those
+you can skip steps 5–7 below.
+
 ## Contents
 
 - [Results](#results)
