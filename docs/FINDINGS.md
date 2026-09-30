@@ -127,8 +127,10 @@ system at a time. Laya also ran through the harness's in-process `laya_local` ad
   hard used 4 rotations.
 - **Winnow on the NPU, hard tier:** 61 of the 111 hard items are longer than one 576-token pass and are refused. On the 50 that
   fit, the scores are Winnow NPU **0.680**, Jev 0.760, decider-2b 0.680, imajev-2b 0.660 and Laya 0.300. On easy and standard
-  items the NPU build gives the same answer as CPU Winnow on 64 of 67 overlapping items. A CPU (Q8) Winnow run on the same 50
-  hard items, to measure the 4-bit loss directly, is pending.
+  items the NPU build gives the same answer as CPU Winnow on 64 of 67 overlapping items.
+- **The 4-bit cost, measured:** CPU Winnow (Q8_0) scores **0.800** on the same 50 hard items (median 17.5 s per item), ahead of
+  Jev's 0.760. So full-precision Winnow is strong on reasoning, and the 4-bit NPU build loses 12 points (6 items) there.
+  CPU and NPU gave the same answer on 41 of 50.
 - *Correction (2026-09-30): an earlier version of this page gave Winnow on the NPU 0.875 (standard) and 0.400 (hard). That run went through a multi-threaded server, which silently corrupts NPU results after about 60–120 requests (see the traps in [WINNOW-NPU.md](WINNOW-NPU.md)). The numbers here come from a re-run on the fixed single-threaded server.*
 - **What the hard tier separates:** long policy texts, multi-hop and temporal-numeric questions. Easy items are nearly solved
   by every model.
@@ -174,7 +176,8 @@ The full guide is in **[WINNOW-NPU.md](WINNOW-NPU.md)**. In short:
 - **Accuracy cost:**
   - one layer at LPBQ int4 has about 12% relative output error (w8a16: about 2%);
   - end to end, the NPU answer matched CPU Winnow on 64/67 JevBench easy and standard items;
-  - the loss shows on close calls; on JevBench the 4-bit build is level with decider-2b on the hard items that fit (section 5).
+  - the loss shows on close calls and on multi-step reasoning: on the hard JevBench items that fit, CPU Q8_0 scores 0.800 and
+    the 4-bit NPU build 0.680 (section 5). On classification-style public tasks it stays close to Jev (section 7).
 
 ### Winnow-12B on the NPU against Jev and Laya: public tasks with human labels
 

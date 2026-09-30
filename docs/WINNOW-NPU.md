@@ -38,7 +38,9 @@ every system):
 - **Easy and standard:** the NPU build keeps Winnow's classification accuracy. It gave the same answer as CPU Winnow (Q8_0) on
   64 of 67 overlapping items.
 - **Hard:** 61 of the 111 hard items (long policy texts) exceed one 576-token pass, and the server refuses them. On the 50 that
-  fit, the 4-bit build scores 0.680: level with decider-2b, behind Jev's 0.760.
+  fit, the 4-bit build scores 0.680: level with decider-2b, behind Jev's 0.760. Full-precision Winnow on the CPU (Q8_0) scores
+  **0.800** on the same 50 items, so 4-bit rounding costs about 12 points on multi-step reasoning. On classification-style
+  tasks the cost is small (see the next table).
 
 *Correction (2026-09-30): an earlier version of this page gave Winnow on the NPU 0.875 (standard) and 0.400 (hard). That run went through a multi-threaded server, which silently corrupts NPU results after about 60–120 requests (see the traps below). The numbers here come from a re-run on the fixed single-threaded server.*
 
@@ -183,7 +185,8 @@ These timings are for the compiled graphs, whatever the request content (static 
   passes, and a state plus one question over 576 tokens returns HTTP 422. Longer inputs need larger graphs; attention cost
   grows with the square of the length.
 - **Accuracy:** 4-bit rounding moves close calls. The NPU answer matched CPU Winnow on 64 of 67 JevBench easy and standard
-  items; clear-cut answers survive. Better 4-bit rounding (GPTQ-style) and more calibration data are the obvious next steps.
+  items, but only 41 of 50 hard ones: 0.680 against 0.800 on the CPU. Classification survives 4 bits; multi-step reasoning
+  loses some. Better 4-bit rounding (GPTQ-style) and more calibration data are the obvious next steps.
 - **Memory:** about 6 GB of NPU-mapped weights plus about 1 GB of process memory. Do not run it next to another large NPU
   model.
 - **Hardware:** tested on one X Elite (HTP v73) only. Newer chips (X2 Elite, v81) should work but are untested here.

@@ -1,7 +1,7 @@
 # Contributions to upstream projects
 
-Anything that belongs to a model's own code goes to its repository, where it stays maintained. The first three were posted on 2026-09-29. The llama.cpp blue-screen report and
-the three drafts at the end (from the Winnow work) are not posted yet.
+Anything that belongs to a model's own code goes to its repository, where it stays maintained. The first three were posted on 2026-09-29, and the Winnow-work reports on 2026-10-01 (links below). The llama.cpp
+blue-screen report is still a draft.
 
 ## piffie/laya-snapdragon: hardware report (X Elite, HTP v73)
 
@@ -69,9 +69,13 @@ Posted: https://github.com/mohit67890/imajev/issues/1
     GGUF (decider-2b / 4b).
   - CPU-only builds are stable.
 
-## microsoft/onnxruntime (QNN EP): LPBQ requirements are undocumented; SimplifiedLayerNormalization is not placed on HTP
+## onnxruntime/onnxruntime-qnn: LPBQ requirements; cross-thread corruption
 
-*Draft, not posted.*
+Posted to the QNN execution provider's own repository:
+- https://github.com/onnxruntime/onnxruntime-qnn/issues/893: int4 LPBQ block scales must be 1..15 (plus the 1.24.4 rejection, `SimplifiedLayerNormalization` placement and plain block-wise int4).
+- https://github.com/onnxruntime/onnxruntime-qnn/issues/892: sessions called from many threads silently return wrong results; a single thread fixes it.
+
+Original draft:
 
 1. **LPBQ int4 block scales are read as 4-bit.** `qnn_quant_params_wrapper.cc` sets `blockScaleBitwidth = is_int4 ? 4 : 0`.
    - The `lpbqmatmul_fusion` pattern takes per-block scales as a uint8 initializer dequantized per channel, so 8-bit values
@@ -89,7 +93,7 @@ Reproduction scripts: `winnow-npu/tools/lpbq_layer_test.py`, `lpbq_plugin_test.p
 
 ## EldanRing/winnow-inference: CPU-only use
 
-*Draft, not posted.*
+Posted: https://github.com/EldanRing/winnow-inference/issues/3
 
 - `native/engine.h` throws "Winnow requires a GPU backend" when no GPU or iGPU device exists. The device is only used for its
   description and memory figures, so falling back to the CPU device works (`winnow-npu/cpu/local-cpu-fallback.patch`).
@@ -99,7 +103,7 @@ Reproduction scripts: `winnow-npu/tools/lpbq_layer_test.py`, `lpbq_plugin_test.p
 
 ## ggml-org/llama.cpp: reading back a tensor from the CPU repack buffer crashes
 
-*Draft, not posted.*
+Not posted: it is already reported as https://github.com/ggml-org/llama.cpp/issues/29701 (closed 2026-09-30).
 
 `ggml_backend_tensor_get` on a tensor that lives in the CPU "repack" extra buffer calls a null `get_tensor`, which is an access
 violation. It was hit through winnow-inference's classifier-head patch reading the tied `token_embd` rows (Gemma 4 12B Q8_0,
