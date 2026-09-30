@@ -32,6 +32,13 @@ Posted: https://github.com/piffie/laya-snapdragon/issues/1
 
 Posted: https://github.com/Mapika/decider/issues/18
 
+**Outcome (2026-10-01):**
+- **Fixed in decider-ai 1.7.1:** the numpy pin is removed, float32 is the default on CPU, and `serve.sh` binds 127.0.0.1
+  (`DECIDER_HOST` opens it). We verified all three with 1.8.1 on the X Elite:
+  https://github.com/Mapika/decider/issues/18#issuecomment-5920110086
+- **Planned:** the maintainer will add the clang llama-cpp-python recipe to the GGUF section.
+- **Not planned for now:** a QNN recurrent-form export. The issue stays open for it.
+
 **Title:** Windows on ARM (Snapdragon X): numpy<2 pin blocks install; bfloat16 on CPU is 13× slower; llama.cpp needs clang
 
 1. **numpy pin.** `numpy<2`: numpy 1.26 has no win_arm64 cp312 wheel, so pip tries to build it from source. The only runtime numpy
@@ -50,6 +57,15 @@ Posted: https://github.com/Mapika/decider/issues/18
 ## mohit67890/imajev: torchvision required for text-only use
 
 Posted: https://github.com/mohit67890/imajev/issues/1
+
+**Outcome (2026-10-01):**
+- **The fix:** PR mohit67890/imajev#24 adds a `torch-text` extra and loads only the tokenizer for text requests.
+- **Our test** on the X Elite, PR head `517a4dd`, fresh venv without torchvision:
+  - it installs via the PyTorch CPU index (PyPI has no Windows ARM64 torch);
+  - it starts cleanly;
+  - it gives 30/30 byte-identical answers against our torchvision build;
+  - image requests fail with the expected torchvision error.
+- **Report:** https://github.com/mohit67890/imajev/issues/1#issuecomment-5918236728
 
 **Title:** Text-only CPU use still needs torchvision (Qwen3VLVideoProcessor); no Windows ARM64 wheel
 

@@ -69,10 +69,11 @@ Measured on one Snapdragon X Elite laptop in September 2026 (versions in the REA
 
 ## 3. Decider and imajev on this laptop
 
-- **Decider, numpy:** `decider-ai` pins `numpy<2`, and numpy 1.x has no Windows ARM64 wheel. Install decider with `--no-deps` on
-  top of numpy 2. Its only runtime numpy use works on 2.x.
+- **Decider, numpy** (*fixed in decider-ai 1.7.1*): `decider-ai` up to 1.6 pinned `numpy<2`, and numpy 1.x has no Windows ARM64
+  wheel, so we installed it with `--no-deps` on top of numpy 2. Since 1.7.1 the pin is gone: a fresh venv installs 1.8.1 on
+  numpy 2.5.3, with torch from the PyTorch CPU index.
 - **bfloat16 is about 13× slower than float32** on Windows ARM64 PyTorch (Decider-2b: 137 s vs 11 s per request).
-  Pass `dtype=torch.float32` on CPU.
+  *Fixed in decider-ai 1.7.1:* the CPU default is now float32. With 1.8.1 the same 3-question request takes 5.2–5.4 s.
 - **llama.cpp needs clang:** it refuses to build with MSVC on ARM64 ("MSVC is not supported for ARM, use clang"). Use the Build
   Tools "C++ Clang tools for Windows" component. Build with `-DGGML_OPENMP=OFF` and **every GPU backend off**.
   - Result: Decider-2b Q8_0 at about 220 ms per 3-question request (Q4_K_M about 330 ms; Q8_0 is faster on this CPU).
