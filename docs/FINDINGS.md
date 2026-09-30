@@ -176,6 +176,27 @@ The full guide is in **[WINNOW-NPU.md](WINNOW-NPU.md)**. In short:
   - end to end, the NPU answer matched CPU Winnow on 64/67 JevBench easy and standard items;
   - the loss shows on close calls; on JevBench the 4-bit build is level with decider-2b on the hard items that fit (section 5).
 
+### Winnow-12B on the NPU against Jev and Laya: public tasks with human labels
+
+| Public task (human labels; ~3,900 items) | Metric | Jev 1.13.0 | **Winnow-12B, NPU, LPBQ int4** | Laya, NPU |
+|---|---|---|---|---|
+| Banking77 intent (12 options) | accuracy | 0.930 | **0.868** | 0.823 |
+| CFPB complaint product (7 options) | accuracy | 0.824 | **0.760** | 0.581 |
+| CFPB "consumer says debt not owed" | AUROC | 0.774 | **0.767** | 0.569 |
+| Complaint tweets: is it a complaint? | AUROC | 0.969 | **0.948** | 0.827 |
+| Complaint severity (4 levels) | weighted kappa | 0.669 | **0.609** | −0.030 |
+| Enron email: writer frustrated? | AUROC | 0.945 | **0.922** | 0.769 |
+| Enron email politeness | Spearman | 0.595 | **0.598** | 0.280 |
+
+- Same items and the same harness (`harness/jevcmp.py`, `fair_report.py`) as section 2; Jev ran 3 repeats, Laya and
+  Winnow 1.
+- 87 CFPB and Enron items with a state plus question longer than 576 tokens were refused by the NPU server and are left
+  out of Winnow's rows.
+- Median 2.2 s per item on the NPU, whether an item has 1, 2 or 3 questions: they are packed into one pass.
+- The NPU server recovered by itself once when the NPU subsystem restarted mid-run.
+- Two earlier runs went through a multi-threaded server and returned chance-level answers. They are discarded; see the
+  traps in WINNOW-NPU.md.
+
 ## 8. Windows ARM64 operational problems
 
 - **Launching Windows servers from WSL hangs WSL** when you use PowerShell `Start-Process`, because the QNN driver keeps WSL's

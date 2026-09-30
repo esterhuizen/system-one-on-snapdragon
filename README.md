@@ -57,6 +57,10 @@ Median time for one request with 3–4 short questions (about 100–130 tokens):
 imajev-2b 1.000 / 0.917 / 0.568 · Laya 0.958 / 0.694 / 0.351 · Winnow-12B on the NPU 1.000 / 0.972 / 0.680 on the 50 hard items
 that fit in 576 tokens (Jev 0.760, decider-2b 0.680 on the same 50). Details and caveats are in FINDINGS.
 
+**Public tasks with human labels** (~3,900 items; Jev / Winnow-12B NPU / Laya NPU): Banking77 accuracy 0.930 / 0.868 / 0.823 ·
+CFPB product 0.824 / 0.760 / 0.581 · complaint-tweet AUROC 0.969 / 0.948 / 0.827 · complaint severity kappa 0.669 / 0.609 / −0.030 ·
+Enron frustration AUROC 0.945 / 0.922 / 0.769.
+
 Accuracy, the benchmark method, and every Windows ARM64 problem we hit are in **[docs/FINDINGS.md](docs/FINDINGS.md)**.
 
 ## Layout

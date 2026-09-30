@@ -42,6 +42,24 @@ every system):
 
 *Correction (2026-09-30): an earlier version of this page gave Winnow on the NPU 0.875 (standard) and 0.400 (hard). That run went through a multi-threaded server, which silently corrupts NPU results after about 60–120 requests (see the traps below). The numbers here come from a re-run on the fixed single-threaded server.*
 
+**Public tasks with human labels** (the fair suite from this repo's `harness/fairbench`, about 3,900 items, the same items for every
+system):
+
+| Public task (human labels; ~3,900 items) | Metric | Jev 1.13.0 | **Winnow-12B, NPU, LPBQ int4** | Laya, NPU |
+|---|---|---|---|---|
+| Banking77 intent (12 options) | accuracy | 0.930 | **0.868** | 0.823 |
+| CFPB complaint product (7 options) | accuracy | 0.824 | **0.760** | 0.581 |
+| CFPB "consumer says debt not owed" | AUROC | 0.774 | **0.767** | 0.569 |
+| Complaint tweets: is it a complaint? | AUROC | 0.969 | **0.948** | 0.827 |
+| Complaint severity (4 levels) | weighted kappa | 0.669 | **0.609** | −0.030 |
+| Enron email: writer frustrated? | AUROC | 0.945 | **0.922** | 0.769 |
+| Enron email politeness | Spearman | 0.595 | **0.598** | 0.280 |
+
+- On these classification and judgement tasks, the 4-bit NPU build lands **close to Jev** (within about 1–7 points), and well
+  ahead of Laya.
+- Median time per item: 2.2 s, with 1–3 questions packed into one pass.
+- 87 items were longer than 576 tokens and were refused.
+
 **Speed on this laptop**, one request with a 70–550 token state:
 
 | Winnow-12B | Where | Time |
