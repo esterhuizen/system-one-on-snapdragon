@@ -117,7 +117,7 @@ system at a time. Laya also ran through the harness's in-process `laya_local` ad
 | imajev-2b (1 rotation + calibration) | CPU, PyTorch fp32 | 1.000 | 0.917 | 0.568 | 0.096 | 6.4 / 22 s |
 | Laya (ModernBERT-large) | NPU fp16 | 0.958 | 0.694 | 0.351 | 0.198 | 40 / 412 ms |
 | Laya | Adreno GPU / CPU | 0.958 | 0.694 | 0.351 | 0.19 | 130 ms / 736 ms (short) |
-| Winnow-12B, LPBQ int4 (section 7) | NPU | 1.000 | 0.875 | see below | | 2.2 s |
+| Winnow-12B, LPBQ int4 (section 7) | NPU | 1.000 | 0.972 | see below | | 2.2 s |
 
 - **The harness reproduces published results:**
   - Laya matches JevBench's published per-item outcomes on **231/231** items, on all three routes.
@@ -126,9 +126,10 @@ system at a time. Laya also ran through the harness's in-process `laya_local` ad
 - **imajev:** one very long hard item exceeded the harness's 120 s timeout on the CPU and counts as wrong. The author's 0.604 on
   hard used 4 rotations.
 - **Winnow on the NPU, hard tier:** 61 of the 111 hard items are longer than one 576-token pass and are refused. On the 50 that
-  fit, the scores are Winnow NPU **0.400**, Jev 0.760, decider-2b 0.680, imajev-2b 0.660 and Laya 0.300. On easy and standard
-  items the NPU build matches CPU Winnow (64/67). A CPU (Q8) Winnow run on the same 50 hard items, to separate the 4-bit loss
-  from the model itself, is pending.
+  fit, the scores are Winnow NPU **0.680**, Jev 0.760, decider-2b 0.680, imajev-2b 0.660 and Laya 0.300. On easy and standard
+  items the NPU build gives the same answer as CPU Winnow on 64 of 67 overlapping items. A CPU (Q8) Winnow run on the same 50
+  hard items, to measure the 4-bit loss directly, is pending.
+- *Correction (2026-09-30): an earlier version of this page gave Winnow on the NPU 0.875 (standard) and 0.400 (hard). That run went through a multi-threaded server, which silently corrupts NPU results after about 60–120 requests (see the traps in [WINNOW-NPU.md](WINNOW-NPU.md)). The numbers here come from a re-run on the fixed single-threaded server.*
 - **What the hard tier separates:** long policy texts, multi-hop and temporal-numeric questions. Easy items are nearly solved
   by every model.
 
@@ -173,7 +174,7 @@ The full guide is in **[WINNOW-NPU.md](WINNOW-NPU.md)**. In short:
 - **Accuracy cost:**
   - one layer at LPBQ int4 has about 12% relative output error (w8a16: about 2%);
   - end to end, the NPU answer matched CPU Winnow on 64/67 JevBench easy and standard items;
-  - the loss shows on close calls; the weak hard-tier score (section 5) is still being separated from Winnow's own accuracy.
+  - the loss shows on close calls; on JevBench the 4-bit build is level with decider-2b on the hard items that fit (section 5).
 
 ## 8. Windows ARM64 operational problems
 

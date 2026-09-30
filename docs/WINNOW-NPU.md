@@ -29,7 +29,7 @@ every system):
 
 | System | Easy (48) | Standard (72) | Hard items that fit in 576 tokens (50 of 111) | Median time per item |
 |---|---|---|---|---|
-| **Winnow-12B, NPU, LPBQ int4 (this guide)** | **1.000** | **0.875** | 0.400 | **2.2 s** |
+| **Winnow-12B, NPU, LPBQ int4 (this guide)** | **1.000** | **0.972** | **0.680** | **2.2 s** |
 | Jev 1.13.0 (TypeSafe API) | 1.000 | 0.986 | 0.760 | 0.26 s |
 | decider-2b v11, CPU (llama.cpp Q8_0) | 1.000 | 0.889 | 0.680 | 0.2 s short / 1.8 s long |
 | imajev-2b, CPU (PyTorch fp32) | 1.000 | 0.917 | 0.660 | 6–22 s |
@@ -38,9 +38,9 @@ every system):
 - **Easy and standard:** the NPU build keeps Winnow's classification accuracy. It gave the same answer as CPU Winnow (Q8_0) on
   64 of 67 overlapping items.
 - **Hard:** 61 of the 111 hard items (long policy texts) exceed one 576-token pass, and the server refuses them. On the 50 that
-  fit, the 4-bit build scores well below the others. How much of that is 4-bit rounding and how much is Winnow itself is not
-  yet separated: a CPU (Q8_0) Winnow run on the same 50 items is pending. Until then, treat it as a fast classifier, not a
-  reasoner.
+  fit, the 4-bit build scores 0.680: level with decider-2b, behind Jev's 0.760.
+
+*Correction (2026-09-30): an earlier version of this page gave Winnow on the NPU 0.875 (standard) and 0.400 (hard). That run went through a multi-threaded server, which silently corrupts NPU results after about 60–120 requests (see the traps below). The numbers here come from a re-run on the fixed single-threaded server.*
 
 **Speed on this laptop**, one request with a 70–550 token state:
 
@@ -123,6 +123,8 @@ All commands run on Windows in native ARM64 Python 3.12. `WINNOW_HOME` is a work
 | The w8a16 chain was twice as slow as its per-chunk timings suggest | The NPU keeps only about **9–10 GB** of weights mapped, **system-wide**. 12 × 0.9 GB forces re-mapping on every pass. Two processes do not help. | 4-bit LPBQ (about 5.6 GB) fits. Per-chunk time is unchanged, but the chain runs at the sum of its parts. |
 | A request with two questions took 2 × 1.6 s | One pass per question, and the shared state processed twice | Pack all questions into one pass: RoPE tables and mask become graph **inputs**; block mask; positions restart per question (`make_packed_chunks.py`, `npu_winnow.py`) |
 | Packed requests did not fit 512 tokens | A state plus two long questions often exceeds 512 tokens | `resize_packed.py` changes the static length (576) by editing Reshape targets. It needs no rebuild or recalibration. |
+| The server answered correctly at first, then silently went wrong: benchmark answers at chance level, and each request *faster* than before, with no errors | A threading HTTP server ran every request on a new thread. Calling the QNN sessions (ORT 1.30 + onnxruntime-qnn 2.6.0) from many different threads corrupts results after roughly 60–120 requests. The same requests on one thread ran clean. | **Call the NPU from one thread only.** `npu_serve.py` is single-threaded and runs a start-up self-test. Test with a canary before and after a few hundred varied requests. |
+| Mid-run: `NPU crashed. SSR detected during QNN graph execute`, then every request failed | The NPU subsystem restarted (seen here during a long unattended run) and the loaded sessions were dead | `npu_serve.py` catches NPU errors, reloads every session, re-runs the self-test and retries the request once. It exits if the self-test fails. |
 | The ONNX model failed to load: `Unsupported model IR version: 14` | onnx 1.23 writes IR 14 by default; ORT 1.24 reads up to 13 | `make_model(..., ir_version=10)` |
 
 CPU side (for the reference server and for checking):

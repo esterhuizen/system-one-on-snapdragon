@@ -26,7 +26,7 @@ D, CAP, MASK = 3840, 30.0, -60.0
 
 
 class WinnowNPU:
-    def __init__(self, chain="chain_pub", seq=576, variant="lpbq32", gguf_path=None):
+    def __init__(self, chain="chain_pub", seq=576, variant="lpbq32", gguf_path=None, perf="burst"):
         self.S = seq; mp = "model_packed" if seq == 512 else f"model_packed{seq}"
         g = gguf.GGUFReader(gguf_path or os.path.join(W, "models", "Winnow-12B", "gguf", "Winnow-12B-Q8_0.gguf"))
         T = {t.name: t for t in g.tensors}; kv = lambda k: g.fields[k].contents()
@@ -47,7 +47,7 @@ class WinnowNPU:
             if not os.path.exists(ctx):
                 raise FileNotFoundError(f"{ctx} missing: compile first (compile_chain.py)")
             so = ort.SessionOptions(); so.log_severity_level = 3
-            so.add_provider_for_devices(npu, {"htp_performance_mode": "burst"})
+            so.add_provider_for_devices(npu, {"htp_performance_mode": perf})
             s = ort.InferenceSession(ctx, so)
             m = onnx.load(os.path.join(d, mp + ".onnx"), load_external_data=False); I = {i.name: i for i in m.graph.initializer}
             qp = {}
@@ -82,11 +82,16 @@ class WinnowNPU:
         ids = prefix + [t for s in suffixes for t in s]
         x = np.zeros((1, self.S, D), np.float32); x[0, : len(ids)] = self.emb(ids) * math.sqrt(D)
         tab = self._tables(len(prefix), [len(s) for s in suffixes])
-        for s, qp in self.sess:
+        dbg = os.environ.get("WINNOW_NPU_DEBUG") == "1"
+        for k, (s, qp) in enumerate(self.sess):
             feed = {"x": x}
             for name, (base, sc, zp) in qp.items():
                 feed[name] = np.clip(np.round(tab[base] / sc) + zp, 0, 65535).astype(np.uint16)
             x = s.run(["y"], feed)[0]
+            if dbg:
+                live = x[0, : len(ids)]
+                print(f"[dbg] chunk {k:2d} finite {bool(np.isfinite(x).all())} max|y| {float(np.abs(live).max()):9.2f} "
+                      f"mean|y| {float(np.abs(live).mean()):7.3f}", flush=True)
         rows, end = [], len(prefix)
         for suf in suffixes:
             end += len(suf); h = x[0, end - 1]; rows.append(h / np.sqrt((h * h).mean() + self.eps) * self.onorm)

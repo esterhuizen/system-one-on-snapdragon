@@ -54,8 +54,8 @@ Median time for one request with 3–4 short questions (about 100–130 tokens):
 | CPU, llama.cpp Q8_0 | ~6–8 s per short JevBench item | Needs about 14 GB free RAM; long option lists take several times longer |
 
 **JevBench public items** (231; accuracy easy / standard / hard): Jev 1.000 / 0.986 / 0.712 · decider-2b 1.000 / 0.889 / 0.568 ·
-imajev-2b 1.000 / 0.917 / 0.568 · Laya 0.958 / 0.694 / 0.351 · Winnow-12B on the NPU 1.000 / 0.875 / 0.400 on the 50 hard items
-that fit in 576 tokens (Jev 0.760 on the same 50). Details and caveats are in FINDINGS.
+imajev-2b 1.000 / 0.917 / 0.568 · Laya 0.958 / 0.694 / 0.351 · Winnow-12B on the NPU 1.000 / 0.972 / 0.680 on the 50 hard items
+that fit in 576 tokens (Jev 0.760, decider-2b 0.680 on the same 50). Details and caveats are in FINDINGS.
 
 Accuracy, the benchmark method, and every Windows ARM64 problem we hit are in **[docs/FINDINGS.md](docs/FINDINGS.md)**.
 
