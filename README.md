@@ -13,6 +13,9 @@ or yes/no. The ones covered here are:
   2 s per request, through ONNX Runtime's QNN provider with no test-signing. It also runs on the CPU through its llama.cpp server.
   The build, the traps and the numbers are in **[docs/WINNOW-NPU.md](docs/WINNOW-NPU.md)**; the NPU-ready model files are on
   Hugging Face: [tielmane/Winnow-12B-NPU-LPBQ-X-Elite](https://huggingface.co/tielmane/Winnow-12B-NPU-LPBQ-X-Elite).
+- **[decider-12b](https://huggingface.co/Mapika/decider-12b)** (Mapika, Gemma 4 12B): built for the **Hexagon NPU** with the same
+  pipeline, about 2.2 s per request; JevBench standard 0.986, level with Jev. NPU files:
+  [tielmane/decider-12b-NPU-LPBQ-X-Elite](https://huggingface.co/tielmane/decider-12b-NPU-LPBQ-X-Elite); code in `decider-npu/`.
 - **Laya, fine-tuned into a dedicated classifier** with Claude Opus labels: on a real helpdesk-ticket job it went from 63.5% to
   **88.5%** (Jev 83.5%) and runs on the NPU at ~17 ms per ticket. Recipe and code: **[docs/LAYA-FINETUNE.md](docs/LAYA-FINETUNE.md)**.
 
@@ -73,6 +76,7 @@ laya/bin/      WSL launchers: winrun (run a Windows venv script), serve (start/s
 laya/win/      Windows-side Python: NPU/GPU servers, proofs, encoder export and QNN graph fixes, throttling opt-out
 decider/       Windows ARM64 setup, CPU-only llama.cpp build, smoke tests, ONNX export + QNN diagnosis (bisect, chain)
 imajev/        Windows ARM64 setup, torchvision-from-source build, smoke test
+decider-npu/   decider-12b on the Hexagon NPU: Decider-format prompts/head on top of the winnow-npu pipeline, server, checks
 laya-finetune/ Laya -> dedicated classifier: Opus labelling workflow, fine-tuning, NPU export and runner
 winnow-npu/    Winnow-12B on the Hexagon NPU: GGUF -> ONNX chunks, calibration, LPBQ int4, packing, QNN compile, Jev-compatible
                server; tools/ (checks and probes); cpu/ (Winnow's llama.cpp server on the CPU: build, patch, launcher)

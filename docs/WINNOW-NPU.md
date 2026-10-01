@@ -23,6 +23,7 @@ you can skip steps 5–7 below.
 - [The traps, and what fixed each one](#the-traps-and-what-fixed-each-one)
 - [From 7 s to 2 s](#from-7-s-to-2-s)
 - [Checking your build](#checking-your-build)
+- [decider-12b: the same recipe](#decider-12b-the-same-recipe)
 - [Limits](#limits)
 - [Credits and licences](#credits-and-licences)
 
@@ -182,6 +183,35 @@ These timings are for the compiled graphs, whatever the request content (static 
   - Expect fp16 at about 8e-4 relative error, w8a16 at about 2%, and LPBQ block 32 at about 12%.
 - **The server:** it should give the same answers as the packed chain it was compiled from. Here it gave 20/20, with
   |Δp| = 0.
+
+## decider-12b: the same recipe
+
+[Mapika/decider-12b](https://huggingface.co/Mapika/decider-12b) v2 is Gemma-4-12B-it with a merged LoRA: the same
+architecture as Winnow-12B. The pipeline above builds it unchanged ([`decider-npu/`](../decider-npu)).
+
+**What carried over unchanged:**
+- **Conversion:** Mapika ships bf16 safetensors only. llama.cpp's converter (`Gemma4UnifiedForConditionalGeneration`)
+  made a Q8_0 GGUF with exactly Winnow's tensor layout: 667 tensors, K=V global layers, the proportional-RoPE table,
+  soft-cap 30.
+- **The NPU build:** chunking, LPBQ 4-bit, packing, the 576-token resize and compiling all ran unchanged.
+
+**What is Decider's own:**
+- **Prompt:** decider-ai 1.8.1's chat layout (`decider.serve.prepare`). The answer slot is the last token of each question
+  row, so the packed passes work as they do for Winnow.
+- **Answer head:** `softcap30(h · embedding[letter])` divided by Decider's temperature for the answer type (choice 1.5,
+  yes/no 0.05, score 1.0).
+- **Calibration:** the same public suite, rendered in Decider's prompt format (`decider12b_calib_seqs.py`).
+
+**Checks and results** (NPU, 4-bit, about 2.2 s per request):
+- **Against a PyTorch reference** rebuilt from the GGUF: the same answer on 6/6 rows, median logit difference 1.15.
+- **JevBench public items:** easy 1.000, standard **0.986** (level with Jev).
+  - On the 50 hard items that also fit Winnow's longer prompt: **0.700**, against Jev 0.760 and Winnow NPU 0.680.
+  - Decider's shorter prompt fits 53 hard items; on those it scores 0.717.
+  - Mapika reports 0.712 on the full hard tier at full precision; that covers different items.
+- **The private helpdesk-ticket job** in [LAYA-FINETUNE.md](LAYA-FINETUNE.md): 77.5% bucket and 77.5% work type at
+  2.3 s per ticket, slightly ahead of Winnow NPU (75.5% and 73.5%).
+
+**NPU files:** [tielmane/decider-12b-NPU-LPBQ-X-Elite](https://huggingface.co/tielmane/decider-12b-NPU-LPBQ-X-Elite).
 
 ## Limits
 

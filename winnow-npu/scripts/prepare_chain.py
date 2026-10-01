@@ -5,7 +5,7 @@ outputs become chunk k+1's calibration inputs) -> quantize with the Phase 2 reci
 per-channel MatMul weights, other initializers uint16) -> delete the fp32 chunk (disk). Resumable per chunk.
 Calibration sequences: one per question (prefix + question block, <= S tokens) from --calib-jsonl, shuffled, first --ncal.
 
-python prepare_chain.py --calib-jsonl CALIB.jsonl --out chain_pub [--chunks 0-11] [--ncal 32] [--layers-per-chunk 4]
+python prepare_chain.py (--calib-jsonl CALIB.jsonl | --calib-seqs SEQS.json) [--gguf MODEL.gguf] --out chain_pub [--chunks 0-11] [--ncal 32] [--layers-per-chunk 4]
 """
 import argparse, json, os, shutil, subprocess, sys, time
 import numpy as np
@@ -20,11 +20,14 @@ from gguf.quants import dequantize  # noqa: E402
 ap = argparse.ArgumentParser()
 ap.add_argument("--chunks", default="0-11"); ap.add_argument("--ncal", type=int, default=32)
 ap.add_argument("--layers-per-chunk", type=int, default=4)
-ap.add_argument("--calib-jsonl", required=True, help="Jev-format requests (state + questions) to calibrate on; tokenized with winnow_prompt.py")
+ap.add_argument("--calib-jsonl", help="Jev-format requests (state + questions) to calibrate on; tokenized with winnow_prompt.py (Winnow)")
+ap.add_argument("--calib-seqs", help="instead: JSON list of ready-made token-id sequences (e.g. decider-npu/decider12b_calib_seqs.py)")
+ap.add_argument("--gguf", default=None, help="model GGUF (default: models/Winnow-12B/gguf/Winnow-12B-Q8_0.gguf)")
 ap.add_argument("--out", default="chain", help="output folder under onnx\\ (and calib\\<out>)")
 ap.add_argument("--seed", type=int, default=7)
 a = ap.parse_args()
 lo, hi = map(int, a.chunks.split("-")); LPC = a.layers_per_chunk
+GGUF = a.gguf or os.path.join(W, "models", "Winnow-12B", "gguf", "Winnow-12B-Q8_0.gguf")
 CAL = os.path.join(W, "calib", a.out); OX = os.path.join(W, "onnx", a.out); os.makedirs(CAL, exist_ok=True); os.makedirs(OX, exist_ok=True)
 
 
@@ -34,14 +37,18 @@ def calib_inputs0():
         return
     seqs = []
     import random
-    sys.path.insert(0, os.path.join(W, "scripts")); import winnow_prompt as wp
-    for r in map(json.loads, open(a.calib_jsonl, encoding="utf-8")):
-        e = wp.encode({"state": r["state"], "questions": r["questions"]})
-        seqs += [e["prefix_ids"] + s for s in e["suffix_ids"] if len(e["prefix_ids"]) + len(s) <= S]
+    if a.calib_seqs:
+        seqs = [s for s in json.load(open(a.calib_seqs)) if len(s) <= S]
+    else:
+        assert a.calib_jsonl, "give --calib-jsonl (Winnow prompts) or --calib-seqs"
+        sys.path.insert(0, os.path.join(W, "scripts")); import winnow_prompt as wp
+        for r in map(json.loads, open(a.calib_jsonl, encoding="utf-8")):
+            e = wp.encode({"state": r["state"], "questions": r["questions"]})
+            seqs += [e["prefix_ids"] + s for s in e["suffix_ids"] if len(e["prefix_ids"]) + len(s) <= S]
     random.Random(a.seed).shuffle(seqs)
     seqs = seqs[: a.ncal]
     assert all(len(s) <= S for s in seqs), "a calibration sequence exceeds S"
-    t = gguf.GGUFReader(os.path.join(W, r"models\Winnow-12B\gguf\Winnow-12B-Q8_0.gguf"))
+    t = gguf.GGUFReader(GGUF)
     E = next(x for x in t.tensors if x.name == "token_embd.weight"); raw = np.asarray(E.data).reshape(int(E.shape[1]), -1)
     X = np.zeros((len(seqs), S, D), np.float32)
     for i, s in enumerate(seqs):
@@ -60,7 +67,7 @@ for k in range(lo, hi + 1):
     X = np.load(os.path.join(CAL, f"in_{k:02d}.npy"))
     if not os.path.exists(os.path.join(fdir, "model.onnx")):
         subprocess.run([sys.executable, "-X", "utf8", os.path.join(W, "scripts", "build_chunk_onnx.py"), "--start", str(k * LPC),
-                        "--end", str((k + 1) * LPC), "--seq", str(S), "--out-dir", fdir], check=True)
+                        "--end", str((k + 1) * LPC), "--seq", str(S), "--out-dir", fdir, "--gguf", GGUF], check=True)
     so = ort.SessionOptions(); so.intra_op_num_threads = 12
     s = ort.InferenceSession(os.path.join(fdir, "model.onnx"), so, providers=["CPUExecutionProvider"])
     Y = np.stack([s.run(["y"], {"x": X[i: i + 1]})[0][0] for i in range(len(X))]); del s
