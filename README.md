@@ -67,6 +67,21 @@ that fit in 576 tokens (Jev 0.760, decider-2b 0.680, CPU Winnow Q8_0 0.800 on th
 CFPB product 0.824 / 0.760 / 0.581 · complaint-tweet AUROC 0.969 / 0.948 / 0.827 · complaint severity kappa 0.669 / 0.609 / −0.030 ·
 Enron frustration AUROC 0.945 / 0.922 / 0.769.
 
+**A private helpdesk-ticket job** (200 held-out real tickets; two questions: bucket out of 12, work type out of 6; only
+aggregates are published, details in [docs/LAYA-FINETUNE.md](docs/LAYA-FINETUNE.md)):
+
+| Model | Bucket | Work type | Per ticket | Where it runs |
+|---|---|---|---|---|
+| **Laya fine-tuned on Claude Opus labels** | **88.5%** | **89.0%** | **0.017 s** | NPU |
+| Jev 1.13.0 (TypeSafe API) | 83.5% | 85.5% | 0.2 s | cloud |
+| Winnow-12B, Q8_0 | 78.5% | 81.0% | 29 s | CPU |
+| decider-12b v2, 4-bit | 77.5% | 77.5% | 2.3 s | NPU |
+| Winnow-12B, 4-bit, both questions in one pass | 75.5% | 73.5% | 2.1 s | NPU |
+| Laya out of the box | 63.5% | 67.0% | 0.14 s | NPU |
+
+The reference labels for those 200 tickets are a blind two-labeller Claude consensus, so the fine-tuned Laya (trained on
+Claude Opus labels) may share some of their reading of the tickets.
+
 Accuracy, the benchmark method, and every Windows ARM64 problem we hit are in **[docs/FINDINGS.md](docs/FINDINGS.md)**.
 
 ## Layout

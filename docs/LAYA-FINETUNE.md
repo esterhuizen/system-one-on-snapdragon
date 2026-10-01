@@ -19,7 +19,7 @@ about short texts.
 |---|---|---|---|---|
 | Existing helpdesk "Category" field mapped to buckets | 63.0% | – | – | – |
 | Laya out of the box (zero-shot, long bucket descriptions) | 63.5% | 67.0% | 0.14 s | NPU |
-| Winnow-12B, 4-bit ([WINNOW-NPU.md](WINNOW-NPU.md)) | 76.5% | 74.5% | 2.2 s | NPU |
+| Winnow-12B, 4-bit, both questions in one pass ([WINNOW-NPU.md](WINNOW-NPU.md)) | 75.5% | 73.5% | 2.1 s | NPU |
 | Winnow-12B, Q8_0 | 78.5% | 81.0% | 29 s | CPU |
 | decider-12b v2, 4-bit ([WINNOW-NPU.md](WINNOW-NPU.md#decider-12b-the-same-recipe)) | 77.5% | 77.5% | 2.3 s | NPU |
 | Quick test: Laya encoder frozen, linear classifier on Opus labels | 79.5% | 83.0% | – | CPU |
