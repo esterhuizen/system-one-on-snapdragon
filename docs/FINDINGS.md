@@ -180,26 +180,42 @@ The full guide is in **[WINNOW-NPU.md](WINNOW-NPU.md)**. In short:
   - the loss shows on close calls and on multi-step reasoning: on the hard JevBench items that fit, CPU Q8_0 scores 0.800 and
     the 4-bit NPU build 0.680 (section 5). On classification-style public tasks it stays close to Jev (section 7).
 
-### Winnow-12B on the NPU against Jev and Laya: public tasks with human labels
+### Winnow-12B and decider-12b on the NPU against Jev and Laya: public tasks with human labels
 
-| Public task (human labels; ~3,900 items) | Metric | Jev 1.13.0 | **Winnow-12B, NPU, LPBQ int4** | Laya, NPU |
-|---|---|---|---|---|
-| Banking77 intent (12 options) | accuracy | 0.930 | **0.868** | 0.823 |
-| CFPB complaint product (7 options) | accuracy | 0.824 | **0.760** | 0.581 |
-| CFPB "consumer says debt not owed" | AUROC | 0.774 | **0.767** | 0.569 |
-| Complaint tweets: is it a complaint? | AUROC | 0.969 | **0.948** | 0.827 |
-| Complaint severity (4 levels) | weighted kappa | 0.669 | **0.609** | −0.030 |
-| Enron email: writer frustrated? | AUROC | 0.945 | **0.922** | 0.769 |
-| Enron email politeness | Spearman | 0.595 | **0.598** | 0.280 |
+| Public task (human labels; ~3,900 items) | Metric | Jev 1.13.0 | **Winnow-12B, NPU, LPBQ int4** | **decider-12b v2, NPU, LPBQ int4** | Laya, NPU |
+|---|---|---|---|---|---|
+| Banking77 intent (12 options) | accuracy | 0.930 | 0.868 | **0.870** | 0.823 |
+| CFPB complaint product (7 options) | accuracy | 0.824 | 0.760 | **0.776** | 0.581 |
+| CFPB "consumer says debt not owed" | AUROC | 0.774 | **0.767** | 0.695 | 0.569 |
+| Complaint tweets: is it a complaint? | AUROC | 0.969 | **0.948** | 0.877 | 0.827 |
+| Complaint severity (4 levels) | weighted kappa | 0.669 | 0.609 | **0.666** | −0.030 |
+| Enron email: writer frustrated? | AUROC | 0.945 | **0.922** | 0.758 | 0.769 |
+| Enron email politeness | Spearman | 0.595 | **0.598** | 0.411 | 0.280 |
+| **Average of the seven rows above** | mixed | **0.815** | 0.782 | 0.722 | 0.546 |
+| **Average accuracy** (Banking77, CFPB product, debt not owed, complaint, frustrated) | accuracy | **0.857** | 0.823 | 0.821 | 0.647 |
 
-- Same items and the same harness (`harness/jevcmp.py`, `fair_report.py`) as section 2; Jev ran 3 repeats, Laya and
-  Winnow 1.
-- 87 CFPB and Enron items with a state plus question longer than 576 tokens were refused by the NPU server and are left
-  out of Winnow's rows.
-- Median 2.2 s per item on the NPU, whether an item has 1, 2 or 3 questions: they are packed into one pass.
-- The NPU server recovered by itself once when the NPU subsystem restarted mid-run.
-- Two earlier runs went through a multi-threaded server and returned chance-level answers. They are discarded; see the
-  traps in WINNOW-NPU.md.
+- **How to read the averages:**
+  - The first average mixes accuracy, AUROC, kappa and Spearman. That makes it a rough overall score, not a single
+    metric.
+  - The second averages plain accuracy on the five questions that have a single right answer. It asks only "did it
+    pick the right answer?", leaving out how good its confidence is.
+- **decider-12b's yes/no confidences are all-or-nothing, by design.**
+  - Mapika's `decider_config.json` for 12b-v2 sets the yes/no temperature to 0.05. 98.5% of its yes/no answers come out
+    below 0.01 or above 0.99, so AUROC (which ranks items by confidence) loses most of its information.
+  - Its yes/no accuracy is close to Winnow's: complaint 0.874 against 0.873, frustrated 0.903 against 0.910.
+  - Asked as an A/B choice (the suite's twin questions, choice temperature 1.5), its AUROC is 0.942 (tweets), 0.934
+    (Enron) and 0.775 (CFPB), in line with Winnow's 0.945, 0.912 and 0.753.
+  - Use decider-12b's yes/no answers as decisions, not as scores to rank or threshold.
+- **Politeness** (a 5-level rating) is decider-12b's one clear weak spot here.
+- **Same items and the same harness** (`harness/jevcmp.py`, `fair_report.py`) as section 2. Jev ran 3 repeats; Laya,
+  Winnow and decider-12b ran 1 each.
+- **Items refused by the NPU servers:** an item whose state plus question is longer than 576 tokens is refused, and is left
+  out of that model's rows. Winnow refused 87 CFPB and Enron items; decider-12b, with its shorter prompt, refused 18.
+- **Speed:** median 2.1–2.2 s per item for both 12B models, whether an item has 1, 2 or 3 questions, since they are packed
+  into one pass.
+- **Recovery:** the Winnow NPU server recovered by itself once, when the NPU subsystem restarted mid-run.
+- **Discarded runs:** two earlier Winnow runs went through a multi-threaded server and returned chance-level answers. They
+  are discarded; see the traps in WINNOW-NPU.md.
 
 ## 8. Windows ARM64 operational problems
 

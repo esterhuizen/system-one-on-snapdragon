@@ -59,7 +59,7 @@ for fn in glob.glob(os.path.join(a.run, "*", "*.jsonl")):
                 if q["type"] == "score" and p: r["exp"] = float(np.dot(np.arange(len(p)), p))
             rows.append(r)
 df = pd.DataFrame(rows); r0 = df[df.rep == 0]
-targets = [t for t in ["jev", "laya-npu", "laya-gpu", "laya-cpu"] if t in set(df.target)]
+targets = [t for t in ["jev", "winnow-npu", "decider-npu", "laya-npu", "laya-gpu", "laya-cpu"] if t in set(df.target)]
 
 def ece(conf, corr, bins=10):
     e = 0.0; edges = np.linspace(0, 1, bins + 1)

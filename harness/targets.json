@@ -7,5 +7,7 @@
  "laya-npu":     {"base": "http://127.0.0.1:8002", "key": "local", "model": "english", "ping": "/health", "timeout": 120},
  "laya-dml":     {"base": "http://127.0.0.1:8003", "key": "local", "model": "english", "ping": "/health", "timeout": 120},
  "laya-ortcpu":  {"base": "http://127.0.0.1:8004", "key": "local", "model": "english", "ping": "/health", "timeout": 300},
- "laya-cpu-wsl": {"base": "http://127.0.0.1:8010", "key": "local", "model": "english", "ping": "/health", "timeout": 600}
+ "laya-cpu-wsl": {"base": "http://127.0.0.1:8010", "key": "local", "model": "english", "ping": "/health", "timeout": 600},
+ "winnow-npu":   {"base": "http://127.0.0.1:8014", "key": "local", "model": "Winnow-12B-npu-lpbq", "ping": "/health", "timeout": 600},
+ "decider-npu":  {"base": "http://127.0.0.1:8016", "key": "local", "model": "decider-12b-npu-lpbq", "ping": "/health", "timeout": 600}
 }

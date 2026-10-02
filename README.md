@@ -60,12 +60,30 @@ Median time for one request with 3–4 short questions (about 100–130 tokens):
 | CPU, llama.cpp Q8_0 | ~6–8 s per short JevBench item | Needs about 14 GB free RAM; long option lists take several times longer |
 
 **JevBench public items** (231; accuracy easy / standard / hard): Jev 1.000 / 0.986 / 0.712 · decider-2b 1.000 / 0.889 / 0.568 ·
-imajev-2b 1.000 / 0.917 / 0.568 · Laya 0.958 / 0.694 / 0.351 · Winnow-12B on the NPU 1.000 / 0.972 / 0.680 on the 50 hard items
-that fit in 576 tokens (Jev 0.760, decider-2b 0.680, CPU Winnow Q8_0 0.800 on the same 50). Details and caveats are in FINDINGS.
+imajev-2b 1.000 / 0.917 / 0.568 · Laya 0.958 / 0.694 / 0.351.
+- **The 12B models on the NPU:** only 50 of the 111 hard items fit in 576 tokens, so they are scored on those 50.
+  - decider-12b: 1.000 / **0.986** / 0.700.
+  - Winnow-12B: 1.000 / 0.972 / 0.680.
+  - The others on the same 50: Jev 0.760, decider-2b 0.680, CPU Winnow Q8_0 0.800.
+- Details and caveats are in FINDINGS.
 
-**Public tasks with human labels** (~3,900 items; Jev / Winnow-12B NPU / Laya NPU): Banking77 accuracy 0.930 / 0.868 / 0.823 ·
-CFPB product 0.824 / 0.760 / 0.581 · complaint-tweet AUROC 0.969 / 0.948 / 0.827 · complaint severity kappa 0.669 / 0.609 / −0.030 ·
-Enron frustration AUROC 0.945 / 0.922 / 0.769.
+**Public tasks with human labels** (~3,900 items):
+
+| Task | Metric | Jev | Winnow-12B NPU | decider-12b NPU | Laya NPU |
+|---|---|---|---|---|---|
+| Banking77 intent | accuracy | 0.930 | 0.868 | 0.870 | 0.823 |
+| CFPB complaint product | accuracy | 0.824 | 0.760 | 0.776 | 0.581 |
+| CFPB "debt not owed" | AUROC | 0.774 | 0.767 | 0.695 | 0.569 |
+| Complaint tweets | AUROC | 0.969 | 0.948 | 0.877 | 0.827 |
+| Complaint severity | weighted kappa | 0.669 | 0.609 | 0.666 | −0.030 |
+| Enron frustration | AUROC | 0.945 | 0.922 | 0.758 | 0.769 |
+| Enron politeness | Spearman | 0.595 | 0.598 | 0.411 | 0.280 |
+| **Average of the seven** | mixed | **0.815** | 0.782 | 0.722 | 0.546 |
+| **Average accuracy** (5 questions with one right answer) | accuracy | **0.857** | 0.823 | 0.821 | 0.647 |
+
+decider-12b picks the right answer as often as Winnow. Its yes/no confidences, though, are almost always near 0 or 1:
+Mapika's config sets a yes/no temperature of 0.05. Ranking metrics (AUROC) therefore come out lower. FINDINGS section 7 has
+the details.
 
 **A private helpdesk-ticket job** (200 held-out real tickets; two questions: bucket out of 12, work type out of 6; only
 aggregates are published, details in [docs/LAYA-FINETUNE.md](docs/LAYA-FINETUNE.md)):

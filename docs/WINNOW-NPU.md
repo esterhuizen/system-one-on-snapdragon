@@ -210,6 +210,14 @@ architecture as Winnow-12B. The pipeline above builds it unchanged ([`decider-np
   - Mapika reports 0.712 on the full hard tier at full precision; that covers different items.
 - **The private helpdesk-ticket job** in [LAYA-FINETUNE.md](LAYA-FINETUNE.md): 77.5% bucket and 77.5% work type at
   2.3 s per ticket, slightly ahead of Winnow NPU (75.5% and 73.5%).
+- **Public tasks with human labels** (3,920 items; the table is in [FINDINGS.md](FINDINGS.md) section 7):
+  - **Picking the right answer:** level with or slightly ahead of Winnow NPU. Banking77 0.870, CFPB product 0.776,
+    complaint severity kappa 0.666 (Jev 0.669).
+  - **Yes/no confidences:** all-or-nothing, because Decider's yes/no temperature is 0.05, so ranking metrics suffer
+    (tweet-complaint AUROC 0.877 against Winnow's 0.948). Asked as A/B choices, it ranks as well as Winnow.
+  - **Politeness rating:** weak (Spearman 0.411 against 0.598).
+  - **Averages:** 0.722 across the seven headline metrics (Winnow 0.782, Jev 0.815); 0.821 average accuracy
+    (Winnow 0.823, Jev 0.857).
 
 **NPU files:** [tielmane/decider-12b-NPU-LPBQ-X-Elite](https://huggingface.co/tielmane/decider-12b-NPU-LPBQ-X-Elite).
 
