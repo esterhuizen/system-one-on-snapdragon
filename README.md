@@ -82,8 +82,9 @@ imajev-2b 1.000 / 0.917 / 0.568 · Laya 0.958 / 0.694 / 0.351.
 | **Average accuracy** (5 questions with one right answer) | accuracy | **0.857** | 0.823 | 0.821 | 0.647 |
 
 decider-12b picks the right answer as often as Winnow. Its yes/no confidences, though, are almost always near 0 or 1:
-Mapika's config sets a yes/no temperature of 0.05. Ranking metrics (AUROC) therefore come out lower. FINDINGS section 7 has
-the details.
+Mapika's config sets a yes/no temperature of 0.05. Ranking metrics (AUROC) therefore come out lower. Re-scored at a
+temperature of 1.5, its yes/no AUROC matches Winnow's, with the same accuracy, and its average becomes 0.765. FINDINGS
+section 7 has the details.
 
 **A private helpdesk-ticket job** (200 held-out real tickets; two questions: bucket out of 12, work type out of 6; only
 aggregates are published, details in [docs/LAYA-FINETUNE.md](docs/LAYA-FINETUNE.md)):

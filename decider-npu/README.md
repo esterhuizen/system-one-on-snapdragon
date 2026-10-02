@@ -17,6 +17,8 @@ ready-made NPU files are at [tielmane/decider-12b-NPU-LPBQ-X-Elite](https://hugg
 - `WINNOW_HOME`: the winnow-npu working folder (onnx/, src/ with the pinned llama.cpp gguf-py).
 - `DECIDER_MODELS`: the folder holding `decider-12b/` (the HF files) and `decider-12b-gguf/`.
 - `JEVBENCH_PUBLIC`: the JevBench public dataset folder (for the reference rows).
+- `DECIDER_NPU_RAW=1` (analysis only): each answer also carries `x_raw_logits`, the soft-capped letter logits before the
+  temperature, so other temperatures can be scored offline (`harness/noul_temperature.py`).
 
 **Build** (the winnow-npu scripts, with two extra arguments):
 ```

@@ -205,7 +205,28 @@ The full guide is in **[WINNOW-NPU.md](WINNOW-NPU.md)**. In short:
   - Its yes/no accuracy is close to Winnow's: complaint 0.874 against 0.873, frustrated 0.903 against 0.910.
   - Asked as an A/B choice (the suite's twin questions, choice temperature 1.5), its AUROC is 0.942 (tweets), 0.934
     (Enron) and 0.775 (CFPB), in line with Winnow's 0.945, 0.912 and 0.753.
-  - Use decider-12b's yes/no answers as decisions, not as scores to rank or threshold.
+  - **The cause is the temperature alone.**
+    - We re-ran all 2,975 items with yes/no questions, keeping each answer's raw [no, yes] letter logits
+      (`DECIDER_NPU_RAW=1`), and re-scored them at other temperatures (`harness/noul_temperature.py`).
+    - At T = 0.05 the re-scoring reproduces the served results exactly.
+    - At T = 1.0 the outputs are no longer rounded to exactly 0 or 1, and AUROC recovers fully: tweets 0.943, Enron 0.934,
+      CFPB 0.754 (Winnow 0.948 / 0.922 / 0.767). Accuracy is unchanged.
+    - Calibration is best at about T = 1.5–2.0:
+      - the best single value across the three tasks, by log loss, is 1.97;
+      - fitting on two tasks and testing on the third gives 1.6–2.8;
+      - ECE is 0.025 (tweets) and 0.033 (Enron), against 0.12 and 0.10 at T = 0.05.
+
+    | Yes/no AUROC | T = 0.05 (as shipped) | T = 1.0 | T = 1.5 |
+    |---|---|---|---|
+    | Complaint tweets | 0.877 | 0.943 | 0.943 |
+    | Enron: writer frustrated? | 0.758 | 0.934 | 0.934 |
+    | CFPB "debt not owed" | 0.695 | 0.754 | 0.755 |
+
+    With T = 1.5 for yes/no, decider-12b's seven-row average is **0.765** (Winnow 0.782); the remaining gap is mostly
+    politeness. The table above keeps the as-shipped numbers. Measured at 4-bit on the NPU; reported to Mapika in
+    [decider#18](https://github.com/Mapika/decider/issues/18).
+  - Until the config changes, use decider-12b's yes/no answers as decisions rather than as scores to rank or threshold,
+    or set `temperature_by_type.noul` to about 1.5 yourself.
 - **Politeness** (a 5-level rating) is decider-12b's one clear weak spot here.
 - **Same items and the same harness** (`harness/jevcmp.py`, `fair_report.py`) as section 2. Jev ran 3 repeats; Laya,
   Winnow and decider-12b ran 1 each.

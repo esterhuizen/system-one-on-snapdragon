@@ -215,9 +215,11 @@ architecture as Winnow-12B. The pipeline above builds it unchanged ([`decider-np
     complaint severity kappa 0.666 (Jev 0.669).
   - **Yes/no confidences:** all-or-nothing, because Decider's yes/no temperature is 0.05, so ranking metrics suffer
     (tweet-complaint AUROC 0.877 against Winnow's 0.948). Asked as A/B choices, it ranks as well as Winnow.
+    - **The fix:** re-scored from raw logits at a yes/no temperature of 1.0–1.5, AUROC recovers fully (tweets 0.943) with
+      unchanged accuracy, and calibration is best at about 1.5–2.0. Set `temperature_by_type.noul` to about 1.5.
   - **Politeness rating:** weak (Spearman 0.411 against 0.598).
-  - **Averages:** 0.722 across the seven headline metrics (Winnow 0.782, Jev 0.815); 0.821 average accuracy
-    (Winnow 0.823, Jev 0.857).
+  - **Averages:** 0.722 across the seven headline metrics as shipped, 0.765 with a yes/no temperature of 1.5 (Winnow 0.782,
+    Jev 0.815); 0.821 average accuracy (Winnow 0.823, Jev 0.857).
 
 **NPU files:** [tielmane/decider-12b-NPU-LPBQ-X-Elite](https://huggingface.co/tielmane/decider-12b-NPU-LPBQ-X-Elite).
 

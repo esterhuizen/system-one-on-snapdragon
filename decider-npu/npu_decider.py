@@ -102,13 +102,18 @@ class DeciderNPU:
             if cur and used + len(s) > self.S: packs.append(cur); cur, used = [], ctx_len
             cur.append(i); used += len(s)
         packs.append(cur)
-        probs, t0 = [None] * len(items), time.perf_counter()
+        probs, raw, t0 = [None] * len(items), [None] * len(items), time.perf_counter()
         with self.lock:
             for pk in packs:
                 for i, h in zip(pk, self._pass(prefix, [sufs[i] for i in pk])):
                     n = items[i]["nopts"][0]; T = TT.for_types(SV.TEMP, SV.TEMP_BY_TYPE, items[i]["types"])
                     T = T[0] if isinstance(T, list) else T
-                    lg = CAP * np.tanh((self.letters[:n] @ h) / CAP) / T; p = np.exp(lg - lg.max()); probs[i] = (p / p.sum()).tolist()
-        return {"model": SV.MODEL_NAME + "-npu-lpbq", "answers": S1.assemble(rqs, index, probs),
+                    raw[i] = CAP * np.tanh((self.letters[:n] @ h) / CAP)
+                    lg = raw[i] / T; p = np.exp(lg - lg.max()); probs[i] = (p / p.sum()).tolist()
+        answers = S1.assemble(rqs, index, probs)
+        if os.environ.get("DECIDER_NPU_RAW"):   # analysis only: soft-capped letter logits before the temperature
+            for k, kind, s, n in index:
+                if kind != "iso": answers[k]["x_raw_logits"] = [round(float(v), 4) for v in raw[s]]
+        return {"model": SV.MODEL_NAME + "-npu-lpbq", "answers": answers,
                 "usage": {"input_tokens": ctx_len + sum(len(s) for s in sufs), "output_tokens": 0},
                 "npu": {"passes": len(packs), "ms": (time.perf_counter() - t0) * 1e3}}
