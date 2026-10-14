@@ -135,6 +135,45 @@ system at a time. Laya also ran through the harness's in-process `laya_local` ad
 - *Correction (2026-09-30): an earlier version of this page gave Winnow on the NPU 0.875 (standard) and 0.400 (hard). That run went through a multi-threaded server, which silently corrupts NPU results after about 60–120 requests (see the traps in [WINNOW-NPU.md](WINNOW-NPU.md)). The numbers here come from a re-run on the fixed single-threaded server.*
 - **What the hard tier separates:** long policy texts, multi-hop and temporal-numeric questions. Easy items are nearly solved
   by every model.
+- **Which scorer:** all figures here come from the open-source scorer. It scores a yes/no answer by whichever option is more
+  likely, and it still does so at JevBench `7625ecb` (2026-10-10). The public items are identical at both commits.
+
+### Yes/no answers under the JevBench v1.5 leaderboard rule
+
+The leaderboard's frozen v1.5 method (JevBench `docs/METHOD-v1.5.md` §3.1) scores yes/no answers differently. P(yes) ≤ 0.20
+is No, P(yes) ≥ 0.80 is Yes, and anything in between is an abstention counted wrong. Competence is 100 · (acc − 0.5)/0.5.
+This rule is in the method document only, not in the open-source scorer, so we re-scored the stored answers ourselves
+(`harness/jevbench_v15_noul.py`).
+
+The table covers the 64 public yes/no items that every system answered. The NPU 12B builds refuse 10 of the 74 because they
+are longer than 576 tokens.
+
+| System | Accuracy, more-likely option | Accuracy, v1.5 rule | Answers between 0.2 and 0.8 | v1.5 yes/no competence |
+|---|---|---|---|---|
+| decider-12b v2, NPU (yes/no temperature 0.05) | 0.891 | **0.859** | 4.7% | **65.0** |
+| Winnow-12B, NPU | 0.859 | 0.797 | 10.9% | 53.7 |
+| Jev 1.13.0 | 0.875 | 0.750 | 21.9% | 41.5 |
+| decider-2b v11, CPU | 0.750 | 0.562 | 34.4% | 7.8 |
+| imajev-2b, CPU | 0.750 | 0.500 | 40.6% | −5.1 |
+| Laya, NPU | 0.578 | 0.172 | 65.6% | −70.4 |
+
+- **What the rule rewards:** decisive yes/no answers. A model that gives honest, calibrated probabilities loses every answer
+  between 0.2 and 0.8, even when the more likely option is right. That is why Jev drops furthest of the strong models here.
+- **The temperature trade-off for decider-12b**, measured on the public human-labelled yes/no questions of section 7 from the
+  stored raw logits (n = 2,728):
+
+  | Yes/no temperature | Accuracy, more-likely option | Accuracy, v1.5 rule | v1.5 competence | AUROC (tweets) |
+  |---|---|---|---|---|
+  | 0.05 (as shipped) | 0.856 | 0.854 | 70.8 | 0.877 |
+  | 1.0 | 0.856 | 0.793 | 58.6 | 0.943 |
+  | 1.5 | 0.856 | 0.739 | 47.9 | 0.943 |
+  | 2.0 | 0.856 | 0.666 | 33.1 | 0.943 |
+
+- **Mapika's account checks out.** In [decider#18](https://github.com/Mapika/decider/issues/18) Mapika reports the same
+  direction on their own set at bf16 (68.1, 32.2 and 3.6 at T = 0.05, 1.0 and 1.5). Our drop is smaller but goes the same way.
+  - So 0.05 is the right setting for the v1.5 leaderboard.
+  - About 1.0–1.5 is right when you rank answers or read P(yes) as a probability (section 7).
+  - Mapika is documenting this trade-off and the override for calibrated use.
 
 ## 6. Winnow-12B on the CPU
 
@@ -225,8 +264,11 @@ The full guide is in **[WINNOW-NPU.md](WINNOW-NPU.md)**. In short:
     With T = 1.5 for yes/no, decider-12b's seven-row average is **0.765** (Winnow 0.782); the remaining gap is mostly
     politeness. The table above keeps the as-shipped numbers. Measured at 4-bit on the NPU; reported to Mapika in
     [decider#18](https://github.com/Mapika/decider/issues/18).
-  - Until the config changes, use decider-12b's yes/no answers as decisions rather than as scores to rank or threshold,
-    or set `temperature_by_type.noul` to about 1.5 yourself.
+  - **This is a trade-off, not a free improvement.** The 0.05 setting is deliberate: the JevBench v1.5 leaderboard counts
+    yes/no answers between 0.2 and 0.8 as wrong, and a softer temperature lowers that score (section 5, "Yes/no answers
+    under the JevBench v1.5 leaderboard rule").
+  - Keep 0.05 for that leaderboard. To rank or threshold yes/no answers, or to read them as probabilities, override
+    `temperature_by_type.noul` to about 1.0–1.5 (Mapika suggests 1.0).
 - **Politeness** (a 5-level rating) is decider-12b's one clear weak spot here.
 - **Same items and the same harness** (`harness/jevcmp.py`, `fair_report.py`) as section 2. Jev ran 3 repeats; Laya,
   Winnow and decider-12b ran 1 each.

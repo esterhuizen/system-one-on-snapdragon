@@ -216,7 +216,10 @@ architecture as Winnow-12B. The pipeline above builds it unchanged ([`decider-np
   - **Yes/no confidences:** all-or-nothing, because Decider's yes/no temperature is 0.05, so ranking metrics suffer
     (tweet-complaint AUROC 0.877 against Winnow's 0.948). Asked as A/B choices, it ranks as well as Winnow.
     - **The fix:** re-scored from raw logits at a yes/no temperature of 1.0–1.5, AUROC recovers fully (tweets 0.943) with
-      unchanged accuracy, and calibration is best at about 1.5–2.0. Set `temperature_by_type.noul` to about 1.5.
+      unchanged accuracy, and calibration is best at about 1.5–2.0.
+    - **The trade-off:** 0.05 is deliberate. The JevBench v1.5 leaderboard counts yes/no answers between 0.2 and 0.8 as
+      wrong, and at 1.5 that score falls from 70.8 to 47.9 on the same questions (FINDINGS section 5). Keep 0.05 for that
+      leaderboard; override `temperature_by_type.noul` to about 1.0–1.5 for ranking or calibrated use.
   - **Politeness rating:** weak (Spearman 0.411 against 0.598).
   - **Averages:** 0.722 across the seven headline metrics as shipped, 0.765 with a yes/no temperature of 1.5 (Winnow 0.782,
     Jev 0.815); 0.821 average accuracy (Winnow 0.823, Jev 0.857).

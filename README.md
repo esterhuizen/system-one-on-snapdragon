@@ -83,8 +83,11 @@ imajev-2b 1.000 / 0.917 / 0.568 · Laya 0.958 / 0.694 / 0.351.
 
 decider-12b picks the right answer as often as Winnow. Its yes/no confidences, though, are almost always near 0 or 1:
 Mapika's config sets a yes/no temperature of 0.05. Ranking metrics (AUROC) therefore come out lower. Re-scored at a
-temperature of 1.5, its yes/no AUROC matches Winnow's, with the same accuracy, and its average becomes 0.765. FINDINGS
-section 7 has the details.
+temperature of 1.5, its yes/no AUROC matches Winnow's, with the same accuracy, and its average becomes 0.765.
+
+That softer setting has a cost. The JevBench v1.5 leaderboard counts yes/no answers between 0.2 and 0.8 as wrong, which is
+why Mapika ships 0.05. Under that rule decider-12b leads the yes/no items here: competence 65.0, against Winnow 53.7 and
+Jev 41.5. Details are in FINDINGS sections 5 and 7.
 
 **A private helpdesk-ticket job** (200 held-out real tickets; two questions: bucket out of 12, work type out of 6; only
 aggregates are published, details in [docs/LAYA-FINETUNE.md](docs/LAYA-FINETUNE.md)):
